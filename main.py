@@ -22,6 +22,10 @@ class TicTacToeGame:
         self._grid_field[1][0] = 2
         self._root = None
 
+    def _set_grid_field_value(self, row, col, value):
+        self._grid_field[row][col] = value
+        self.set_button(row, col)
+
     def create_env(self):
         self._root = tk.Tk()
         self._root.title("Tic tac toe")
@@ -42,6 +46,10 @@ class TicTacToeGame:
         self.set_text(btn, r, c)
         btn.grid(row=r, column=c)
 
+    def on_click(self, event):
+        btn_info = event.widget.grid_info()
+        self._set_grid_field_value(btn_info['row'], btn_info['column'], 1)
+
     def draw_field(self, is_replay_mode=False):
         for c in range(self._size):
             self._root.columnconfigure(index=c, weight=1)
@@ -53,7 +61,7 @@ class TicTacToeGame:
                 self.set_button(r, c)
 
         if is_replay_mode is False:
-            # self._root.bind("<KeyPress>", self.keydown)
+            self._root.bind("<1>", self.on_click)
             self._root.mainloop()
 
 
