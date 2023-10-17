@@ -18,8 +18,6 @@ class TicTacToeGame:
     def __init__(self):
         self._size = 3
         self._grid_field = [[0 for x in range(self._size)] for y in range(self._size)]
-        self._grid_field[1][1] = 1
-        self._grid_field[1][0] = 2
         self._root = None
 
     def _set_grid_field_value(self, row, col, value):
@@ -34,21 +32,21 @@ class TicTacToeGame:
 
     def set_text(self, button, r, c):
         if self._grid_field[r][c] == 1:
-            button.configure(text="X")
+            button.configure(text="❌")
         elif self._grid_field[r][c] == 2:
-            button.configure(text="O")
+            button.configure(text="⭕")
         else:
             button.configure(text="")
 
     def set_button(self, r, c):
-        btn = SquareButton(side_length=200, font=font.Font(size=125), background="black", fg="white",
+        btn = SquareButton(side_length=200, font=font.Font(size=75), background="black", fg="white",
                            activebackground="black", activeforeground="white", relief=SUNKEN)
         self.set_text(btn, r, c)
         btn.grid(row=r, column=c)
 
     def on_click(self, event):
         btn_info = event.widget.grid_info()
-        self._set_grid_field_value(btn_info['row'], btn_info['column'], 1)
+        self._set_grid_field_value(btn_info['row'], btn_info['column'], 2)
 
     def draw_field(self, is_replay_mode=False):
         for c in range(self._size):
