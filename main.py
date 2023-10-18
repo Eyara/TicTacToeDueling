@@ -31,12 +31,14 @@ class TicTacToeGame:
         self.draw_field()
 
     def set_text(self, button, r, c):
-        if self._grid_field[r][c] == 1:
-            button.configure(text="❌")
-        elif self._grid_field[r][c] == 2:
-            button.configure(text="⭕")
-        else:
-            button.configure(text="")
+        current_field = self._grid_field[r][c]
+        button_text = ""
+        if current_field == 1:
+            button_text = "❌"
+        elif current_field == 2:
+            button_text = "⭕"
+
+        button.configure(text=button_text)
 
     def set_button(self, r, c):
         btn = SquareButton(side_length=200, font=font.Font(size=75), background="black", fg="white",
