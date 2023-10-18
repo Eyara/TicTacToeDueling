@@ -17,12 +17,17 @@ class SquareButton(tk.Button):
 class TicTacToeGame:
     def __init__(self):
         self._size = 3
+        self._win_size = 3
         self._grid_field = [[0 for x in range(self._size)] for y in range(self._size)]
         self._root = None
+        self._current_value = 1
 
     def _set_grid_field_value(self, row, col, value):
         self._grid_field[row][col] = value
         self.set_button(row, col)
+
+    def _toggle_current_value(self):
+        self._current_value = 2 if self._current_value == 1 else 1
 
     def create_env(self):
         self._root = tk.Tk()
@@ -46,9 +51,64 @@ class TicTacToeGame:
         self.set_text(btn, r, c)
         btn.grid(row=r, column=c)
 
+    def is_empty(self, r, c):
+        return self._grid_field[r][c] == 0
+
+    def has_ended(self):
+        iteration_size = self._size - self._win_size
+        # row  and column check
+        for i in range(0, self._size):
+            for j in range(0, iteration_size + 1):
+                row_arr = set()
+                col_arr = set()
+
+                for k in range(0, self._win_size):
+                    row_arr.add(self._grid_field[i][j + k])
+                    col_arr.add(self._grid_field[j + k][i])
+
+                if len(row_arr) == 1 and next(iter(row_arr)) != 0:
+                    return True, next(iter(row_arr))
+                if len(col_arr) == 1 and next(iter(col_arr)) != 0:
+                    return True, next(iter(row_arr))
+
+        # diagonal check
+        for i in range(0, iteration_size + 1):
+            for j in range(0, iteration_size + 1):
+                main_arr = set()
+                side_arr = set()
+
+                for k in range(0, self._win_size):
+                    main_arr.add(self._grid_field[k][k])
+                    side_arr.add(self._grid_field[k][self._size - k - 1])
+
+                if len(main_arr) == 1 and next(iter(main_arr)) != 0:
+                    return True, next(iter(main_arr))
+                if len(side_arr) == 1 and next(iter(side_arr)) != 0:
+                    return True, next(iter(side_arr))
+
+        if not any(0 in row for row in self._grid_field):
+            return True, None
+
+        return False, None
+
+    def clear(self):
+        self._grid_field = [[0 for x in range(self._size)] for y in range(self._size)]
+        self.draw_field()
+
+    def step(self, r, c):
+        if not self.is_empty(r, c):
+            return
+
+        self._set_grid_field_value(r, c, self._current_value)
+        self._toggle_current_value()
+
+        has_ended, winner = self.has_ended()
+        if has_ended:
+            self.clear()
+
     def on_click(self, event):
         btn_info = event.widget.grid_info()
-        self._set_grid_field_value(btn_info['row'], btn_info['column'], 2)
+        self.step(btn_info['row'], btn_info['column'])
 
     def draw_field(self, is_replay_mode=False):
         for c in range(self._size):
