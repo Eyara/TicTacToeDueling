@@ -21,6 +21,7 @@ class TicTacToeGame:
         self._grid_field = [[0 for x in range(self._size)] for y in range(self._size)]
         self._root = None
         self._current_value = 1
+        self._reward = 0
 
     def _set_grid_field_value(self, row, col, value):
         self._grid_field[row][col] = value
@@ -87,13 +88,20 @@ class TicTacToeGame:
                     return True, next(iter(side_arr))
 
         if not any(0 in row for row in self._grid_field):
-            return True, None
+            return True, 0
 
         return False, None
 
-    def clear(self):
+    def reset(self):
         self._grid_field = [[0 for x in range(self._size)] for y in range(self._size)]
         self.draw_field()
+        return self._grid_field
+
+    def get_action_num(self):
+        return self._size * self._size
+
+    def get_action_sample(self):
+        return [x for x in range(0, self.get_action_num())]
 
     def step(self, r, c):
         if not self.is_empty(r, c):
@@ -104,7 +112,7 @@ class TicTacToeGame:
 
         has_ended, winner = self.has_ended()
         if has_ended:
-            self.clear()
+            self.reset()
 
     def on_click(self, event):
         btn_info = event.widget.grid_info()
