@@ -20,15 +20,13 @@ class TicTacToeGame:
         self._win_size = 3
         self._grid_field = [[0 for x in range(self._size)] for y in range(self._size)]
         self._root = None
-        self._current_value = 1
-        self._reward = 0
+        self._current_player = 1
 
     def _set_grid_field_value(self, row, col, value):
         self._grid_field[row][col] = value
-        self.set_button(row, col)
 
-    def _toggle_current_value(self):
-        self._current_value = 2 if self._current_value == 1 else 1
+    def _toggle_current_player(self):
+        self._current_player = 2 if self._current_player == 1 else 1
 
     def create_env(self):
         self._root = tk.Tk()
@@ -92,31 +90,43 @@ class TicTacToeGame:
 
         return False, None
 
-    def reset(self):
+    def reset(self, is_external=False):
         self._grid_field = [[0 for x in range(self._size)] for y in range(self._size)]
-        self.draw_field()
-        return self._grid_field
+
+        if not is_external:
+            self.draw_field()
+        return np.array(self._grid_field).flatten()
 
     def get_action_num(self):
         return self._size * self._size
 
     def get_action_sample(self):
-        return [x for x in range(0, self.get_action_num())]
+        return random.choice(range(0, self.get_action_num()))
 
-    def step(self, r, c):
+    def step(self, r, c, is_external=False):
         if not self.is_empty(r, c):
-            return
+            return np.array(self._grid_field).flatten(), -10, False, False
 
-        self._set_grid_field_value(r, c, self._current_value)
-        self._toggle_current_value()
+        self._set_grid_field_value(r, c, self._current_player)
+
+        if not is_external:
+            self.set_button(r, c)
+
+        self._toggle_current_player()
 
         has_ended, winner = self.has_ended()
         if has_ended:
-            self.reset()
+            self.reset(is_external)
+            return np.array(self._grid_field).flatten(), 10 if winner != 0 else 0, True, False
+
+        return np.array(self._grid_field).flatten(), 0, False, False
 
     def on_click(self, event):
         btn_info = event.widget.grid_info()
         self.step(btn_info['row'], btn_info['column'])
+
+    def external_step(self, action):
+        return self.step(action // self._size, action % self._size, True)
 
     def draw_field(self, is_replay_mode=False):
         for c in range(self._size):
