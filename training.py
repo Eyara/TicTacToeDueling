@@ -21,13 +21,16 @@ def plot_reward(show_result=False):
         plt.title('Training...')
     plt.xlabel('Episode')
     plt.ylabel('Reward')
-    plt.plot(reward_x.numpy())
-    plt.plot(reward_o.numpy())
+
     # Take 100 episode averages and plot them too
-    if len(reward_x) >= 100:
-        means = reward_x.unfold(0, 100, 1).mean(1).view(-1)
-        means = torch.cat((torch.zeros(99), means))
-        plt.plot(means.numpy())
+    if len(reward_x) >= 50:
+        means_x = reward_x.unfold(0, 50, 1).mean(1).view(-1)
+        means_x = torch.cat((torch.zeros(49), means_x))
+        plt.plot(means_x.numpy())
+
+        means_o = reward_o.unfold(0, 50, 1).mean(1).view(-1)
+        means_o = torch.cat((torch.zeros(49), means_o))
+        plt.plot(means_o.numpy())
 
     plt.pause(0.001)  # pause a bit so that plots are updated
 
@@ -44,9 +47,9 @@ episode_rewards_x = []
 episode_rewards_o = []
 
 if torch.cuda.is_available():
-    num_episodes = 3000
+    num_episodes = 5000
 else:
-    num_episodes = 50
+    num_episodes = 200
 
 training_states = []
 
