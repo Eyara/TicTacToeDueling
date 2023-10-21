@@ -38,12 +38,13 @@ def get_next_state(done, observation):
     else:
         return torch.tensor(observation, dtype=torch.float32, device=device).unsqueeze(0)
 
+
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 episode_rewards_x = []
 episode_rewards_o = []
 
 if torch.cuda.is_available():
-    num_episodes = 10000
+    num_episodes = 3000
 else:
     num_episodes = 50
 
