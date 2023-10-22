@@ -105,7 +105,7 @@ class TicTacToeGame:
 
     def step(self, r, c, is_external=False):
         if not self.is_empty(r, c):
-            return np.array(self._grid_field).flatten(), -10, False, False
+            return np.array(self._grid_field).flatten(), -15, False, False
 
         self._set_grid_field_value(r, c, self._current_player)
 

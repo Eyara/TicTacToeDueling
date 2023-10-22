@@ -44,13 +44,22 @@ def get_next_state(done, observation):
 
 
 def train_agent(agent: DQNAgent, current_state, action_sample, device):
-    action = agent.select_action(current_state, action_sample)
-    observation, reward, terminated, truncated = env.external_step(action.item())
-    reward = torch.tensor([reward], device=device)
-    current_done = terminated or truncated
-    current_next_state = get_next_state(current_done, observation)
-    agent_o.learn(current_state, action, current_next_state, reward)
-    current_state = current_next_state
+    retry_count = 0
+    while True:
+        action = agent.select_action(current_state, action_sample)
+        observation, reward, terminated, truncated = env.external_step(action.item())
+        reward = torch.tensor([reward], device=device)
+        current_done = terminated or truncated
+        current_next_state = get_next_state(current_done, observation)
+        agent_o.learn(current_state, action, current_next_state, reward)
+        current_state = current_next_state
+
+        # retry while the agent don't make a correct move
+        if reward != -15 or retry_count > 5:
+            break
+
+        retry_count += 1
+
     return current_done, current_state, reward
 
 
