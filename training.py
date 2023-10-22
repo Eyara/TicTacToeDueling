@@ -6,6 +6,7 @@ import torch
 
 from dqn_agent import DQNAgent, ReplayMemory
 from main import TicTacToeGame
+from random_agent import RandomAgent
 from replay_manager import ReplayManager
 
 
@@ -102,24 +103,21 @@ wins_o = []
 draws = []
 
 if torch.cuda.is_available():
-    num_episodes = 100
+    num_episodes = 5000
 else:
     num_episodes = 200
 
 training_states = []
 
 env = TicTacToeGame()
-common_memory = ReplayMemory(1000000)
 
 for i_episode in range(num_episodes):
     state = env.reset(True)
     state = torch.tensor(state, dtype=torch.float32, device=device).unsqueeze(0)
 
     agent_x = DQNAgent(device, state, env.get_action_num())
-    agent_o = DQNAgent(device, state, env.get_action_num())
-
-    agent_x.memory.add_batch(common_memory.memory)
-    agent_o.memory.add_batch(common_memory.memory)
+    # agent_o = DQNAgent(device, state, env.get_action_num())
+    agent_o = RandomAgent(env.get_action_num())
 
     agents = [agent_x, agent_o]
     random.shuffle(agents)
@@ -154,8 +152,9 @@ for i_episode in range(num_episodes):
             plot_stats()
             break
 
-    common_memory.add_batch(agent_x.memory.get_all())
-    common_memory.add_batch(agent_o.memory.get_all())
+    # if i_episode % 1000 == 0:
+    #     torch.save(agent_x.policy_net.state_dict(), "agent_x_policy.pt")
+    #     torch.save(agent_x.target_net.state_dict(), "agent_x_target.pt")
 
 replay_manager = ReplayManager()
 replay_manager.save_to_file(training_states)

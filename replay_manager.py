@@ -37,9 +37,9 @@ class ReplayManager:
 
         return [list(g) for k, g in itertools.groupby(result, lambda x: x[0])]
 
-    def get_top_n(self, num):
+    def get_top_n(self, num, after_elem=0):
         result = self.load_from_file()
-        return sorted(filter(lambda x: len(x) > 3, result), key=lambda x: len(x))[:num]
+        return sorted(filter(lambda x: len(x) > 3 and x[0][0] > after_elem, result), key=lambda x: len(x))[:num]
 
 
 def play_replay(episode, env, root):
@@ -52,7 +52,7 @@ def play_replay(episode, env, root):
 
 if __name__ == '__main__':
     rm = ReplayManager()
-    best_episode = rm.get_top_n(1)
+    best_episode = rm.get_top_n(1, 3200)
 
     env = TicTacToeGame()
     env.create_replay_env()
