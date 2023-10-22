@@ -98,9 +98,8 @@ for i_episode in range(num_episodes):
             plot_reward()
             break
 
-    if i_episode % 100 == 0:
-        common_memory.add_batch(agent_x.memory.get_all())
-        common_memory.add_batch(agent_o.memory.get_all())
+    common_memory.add_batch(agent_x.memory.get_all())
+    common_memory.add_batch(agent_o.memory.get_all())
 
 # replay_manager = ReplayManager()
 # replay_manager.save_to_file(training_states)
