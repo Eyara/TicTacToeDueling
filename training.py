@@ -4,7 +4,7 @@ from itertools import count
 import matplotlib.pyplot as plt
 import torch
 
-from dqn_agent import DQNAgent
+from dqn_agent import DQNAgent, ReplayMemory
 from main import TicTacToeGame
 
 
@@ -66,6 +66,7 @@ else:
 training_states = []
 
 env = TicTacToeGame()
+common_memory = ReplayMemory(1000000)
 
 for i_episode in range(num_episodes):
     state = env.reset(True)
@@ -73,6 +74,10 @@ for i_episode in range(num_episodes):
 
     agent_x = DQNAgent(device, state, env.get_action_num())
     agent_o = DQNAgent(device, state, env.get_action_num())
+
+    agent_x.memory.add_batch(common_memory.memory)
+    agent_o.memory.add_batch(common_memory.memory)
+
     agents = [agent_x, agent_o]
     random.shuffle(agents)
     done = False
@@ -92,6 +97,10 @@ for i_episode in range(num_episodes):
             episode_rewards_o.append(reward_o)
             plot_reward()
             break
+
+    if i_episode % 100 == 0:
+        common_memory.add_batch(agent_x.memory.get_all())
+        common_memory.add_batch(agent_o.memory.get_all())
 
 # replay_manager = ReplayManager()
 # replay_manager.save_to_file(training_states)
