@@ -1,3 +1,4 @@
+import random
 from itertools import count
 
 import matplotlib.pyplot as plt
@@ -42,6 +43,17 @@ def get_next_state(done, observation):
         return torch.tensor(observation, dtype=torch.float32, device=device).unsqueeze(0)
 
 
+def train_agent(agent: DQNAgent, current_state, action_sample, device):
+    action = agent.select_action(current_state, action_sample)
+    observation, reward, terminated, truncated = env.external_step(action.item())
+    reward = torch.tensor([reward], device=device)
+    current_done = terminated or truncated
+    current_next_state = get_next_state(current_done, observation)
+    agent_o.learn(current_state, action, current_next_state, reward)
+    current_state = current_next_state
+    return current_done, current_state, reward
+
+
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 episode_rewards_x = []
 episode_rewards_o = []
@@ -61,32 +73,19 @@ for i_episode in range(num_episodes):
 
     agent_x = DQNAgent(device, state, env.get_action_num())
     agent_o = DQNAgent(device, state, env.get_action_num())
+    agents = [agent_x, agent_o]
+    random.shuffle(agents)
+    done = False
+
     for t in count():
-        action_x = agent_x.select_action(state, env.get_action_sample())
-
-        observation_x, reward_x, terminated_x, truncated_x = env.external_step(action_x.item())
-
-        reward_x = torch.tensor([reward_x], device=device)
-        done = terminated_x or truncated_x
-
-        # training_states.append((i_episode, observation))
-
-        next_state = get_next_state(done, observation_x)
-        agent_x.learn(state, action_x, next_state, reward_x)
-        state = next_state
-
-        # training the second agent if first don't win on this turn
         if not done:
-            action_o = agent_o.select_action(state, env.get_action_sample())
-            observation_o, reward_o, terminated_o, truncated_o = env.external_step(action_o.item())
-            reward_o = torch.tensor([reward_o], device=device)
-            done = terminated_o or truncated_o
-            next_state = get_next_state(done, observation_o)
-            agent_o.learn(state, action_o, next_state, reward_o)
+            done, state, reward_x = train_agent(agents[0], state, env.get_action_sample(), device)
         else:
-            reward_o = torch.tensor([-10], device=device)
-
-        state = next_state
+            reward_x = -10
+        if not done:
+            done, state, reward_o = train_agent(agents[1], state, env.get_action_sample(), device)
+        else:
+            reward_o = -10
 
         if done:
             episode_rewards_x.append(reward_x)
