@@ -28,6 +28,9 @@ class TicTacToeGame:
     def _toggle_current_player(self):
         self._current_player = 2 if self._current_player == 1 else 1
 
+    def set_grid_field(self, grid):
+        self._grid_field = grid
+
     def create_env(self):
         self._root = tk.Tk()
         self._root.title("Tic tac toe")
@@ -105,7 +108,7 @@ class TicTacToeGame:
 
     def step(self, r, c, is_external=False):
         if not self.is_empty(r, c):
-            return np.array(self._grid_field).flatten(), -15, False, False
+            return np.array(self._grid_field).flatten(), -20, False, False
 
         self._set_grid_field_value(r, c, self._current_player)
 
@@ -117,7 +120,7 @@ class TicTacToeGame:
         has_ended, winner = self.has_ended()
         if has_ended:
             self.reset(is_external)
-            return np.array(self._grid_field).flatten(), 10 if winner != 0 else 0, True, False
+            return np.array(self._grid_field).flatten(), 10 if winner != 0 else 5, True, False
 
         return np.array(self._grid_field).flatten(), 0, False, False
 
@@ -142,6 +145,16 @@ class TicTacToeGame:
             self._root.bind("<1>", self.on_click)
             self._root.mainloop()
 
+    def create_replay_env(self):
+        self._root = tk.Tk()
+        self._root.title("Tic tac toe's replay")
+        self._root.geometry("600x600")
+
+    def get_root(self):
+        return self._root
+
+    def run_mainloop(self):
+        self._root.mainloop()
 
 if __name__ == '__main__':
     tg = TicTacToeGame()
