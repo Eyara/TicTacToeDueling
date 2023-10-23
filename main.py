@@ -28,6 +28,9 @@ class TicTacToeGame:
     def _toggle_current_player(self):
         self._current_player = 2 if self._current_player == 1 else 1
 
+    def get_current_player(self):
+        return self._current_player
+
     def set_grid_field(self, grid):
         self._grid_field = grid
 
@@ -95,6 +98,7 @@ class TicTacToeGame:
 
     def reset(self, is_external=False):
         self._grid_field = [[0 for x in range(self._size)] for y in range(self._size)]
+        self._current_player = 1
 
         if not is_external:
             self.draw_field()
@@ -119,8 +123,9 @@ class TicTacToeGame:
 
         has_ended, winner = self.has_ended()
         if has_ended:
+            ended_grid_field = self._grid_field
             self.reset(is_external)
-            return np.array(self._grid_field).flatten(), 10 if winner != 0 else 5, True, False
+            return np.array(ended_grid_field).flatten(), 10 if winner != 0 else 5, True, False
 
         return np.array(self._grid_field).flatten(), 0, False, False
 
@@ -130,6 +135,9 @@ class TicTacToeGame:
 
     def external_step(self, action):
         return self.step(action // self._size, action % self._size, True)
+
+    def external_check_action(self, action):
+        return self.is_empty(action // self._size, action % self._size)
 
     def draw_field(self, is_replay_mode=False):
         for c in range(self._size):
@@ -153,8 +161,18 @@ class TicTacToeGame:
     def get_root(self):
         return self._root
 
+    def get_hash(self) -> int:
+        res = 0
+        for i in range(self._size):
+            res *= 3
+            for j in range(self._size):
+                res *= j + 1
+                res += self._grid_field[i][j]
+        return res
+
     def run_mainloop(self):
         self._root.mainloop()
+
 
 if __name__ == '__main__':
     tg = TicTacToeGame()

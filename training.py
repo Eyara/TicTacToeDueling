@@ -6,6 +6,7 @@ import torch
 
 from dqn_agent import DQNAgent, ReplayMemory
 from main import TicTacToeGame
+from minimax_agent import MiniMaxAgent
 from random_agent import RandomAgent
 from replay_manager import ReplayManager
 
@@ -39,16 +40,12 @@ def plot_reward(show_result=False):
     plt.pause(0.001)  # pause a bit so that plots are updated
 
 
-def plot_stats(show_result=False):
+def plot_stats():
     plt.figure(1)
     wins_x_stat = torch.tensor(wins_x, dtype=torch.float)
     wins_o_stat = torch.tensor(wins_o, dtype=torch.float)
     draws_stat = torch.tensor(draws, dtype=torch.float)
-    if show_result:
-        plt.title('Stats')
-    else:
-        plt.clf()
-        plt.title('Training...')
+    plt.clf()
     plt.xlabel('Episode')
     plt.ylabel('Count')
     plt.plot(wins_x_stat.numpy(), label="Wins X")
@@ -66,10 +63,13 @@ def get_next_state(done, observation):
         return torch.tensor(observation, dtype=torch.float32, device=device).unsqueeze(0)
 
 
-def train_agent(agent: DQNAgent, current_state, action_sample, device):
+def train_agent(agent, current_state, action_sample, device, is_minimax=False):
     retry_count = 0
     while True:
-        action = agent.select_action(current_state, action_sample)
+        if is_minimax:
+            action = agent.select_action(env, action_sample)
+        else:
+            action = agent.select_action(current_state, action_sample)
         observation, reward, terminated, truncated = env.external_step(action.item())
 
         # smells bad but does not care tbh
@@ -78,7 +78,7 @@ def train_agent(agent: DQNAgent, current_state, action_sample, device):
         reward = torch.tensor([reward], device=device)
         current_done = terminated or truncated
         current_next_state = get_next_state(current_done, observation)
-        agent_o.learn(current_state, action, current_next_state, reward)
+        agent.learn(current_state, action, current_next_state, reward)
         current_state = current_next_state
 
         # retry while the agent don't make a correct move
@@ -111,16 +111,19 @@ training_states = []
 
 env = TicTacToeGame()
 
+state = env.reset(True)
+state = torch.tensor(state, dtype=torch.float32, device=device).unsqueeze(0)
+agent_x = DQNAgent(device, state, env.get_action_num())
+agent_o = DQNAgent(device, state, env.get_action_num())
+# agent_o = MiniMaxAgent(env.get_action_num())
+# agent_o = RandomAgent(env.get_action_num())
+
 for i_episode in range(num_episodes):
     state = env.reset(True)
     state = torch.tensor(state, dtype=torch.float32, device=device).unsqueeze(0)
 
-    agent_x = DQNAgent(device, state, env.get_action_num())
-    # agent_o = DQNAgent(device, state, env.get_action_num())
-    agent_o = RandomAgent(env.get_action_num())
-
     agents = [agent_x, agent_o]
-    random.shuffle(agents)
+    # random.shuffle(agents)
     done = False
 
     for t in count():
@@ -152,14 +155,15 @@ for i_episode in range(num_episodes):
             plot_stats()
             break
 
-    # if i_episode % 1000 == 0:
-    #     torch.save(agent_x.policy_net.state_dict(), "agent_x_policy.pt")
-    #     torch.save(agent_x.target_net.state_dict(), "agent_x_target.pt")
+    if i_episode % 1000 == 0:
+        torch.save(agent_x.policy_net.state_dict(), "./weights/agent_x_policy_optimum.pt")
+        torch.save(agent_x.target_net.state_dict(), "./weights/agent_x_target_optimum.pt")
+        torch.save(agent_o.policy_net.state_dict(), "./weights/agent_o_policy_optimum.pt")
+        torch.save(agent_o.target_net.state_dict(), "./weights/agent_o_target_optimum.pt")
 
 replay_manager = ReplayManager()
 replay_manager.save_to_file(training_states)
 
 # plot_reward(show_result=True)
-plot_stats(show_result=True)
 plt.ioff()
 plt.show()

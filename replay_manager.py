@@ -43,7 +43,7 @@ class ReplayManager:
 
 
 def play_replay(episode, env, root):
-    for step in episode[0]:
+    for step in episode:
         env.set_grid_field(np.array(step[1]).reshape((3, 3)))
         env.draw_field(True)
         root.after(750)
@@ -52,11 +52,13 @@ def play_replay(episode, env, root):
 
 if __name__ == '__main__':
     rm = ReplayManager()
-    best_episode = rm.get_top_n(1, 3200)
+    best_episodes = rm.get_top_n(3, 9000)
 
-    env = TicTacToeGame()
-    env.create_replay_env()
+    for episode in best_episodes:
+        env = TicTacToeGame()
+        env.create_replay_env()
 
-    play_replay(best_episode, env, env.get_root())
+        play_replay(episode, env, env.get_root())
 
-    env.run_mainloop()
+        env.run_mainloop()
+
