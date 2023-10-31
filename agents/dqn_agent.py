@@ -8,18 +8,16 @@ from torch import nn, optim
 
 
 class DQN(nn.Module):
-    def __init__(self, n_observations, n_actions):
-        super(DQN, self).__init__()
-        self.layer1 = nn.Linear(n_observations, 243)
-        self.layer2 = nn.Linear(243, 81)
-        self.layer3 = nn.Linear(81, 9)
-        self.layer4 = nn.Linear(9, n_actions)
+    def __init__(self, n_observations, n_actions, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.layer1 = nn.Linear(n_observations, 81)
+        self.layer2 = nn.Linear(81, 9)
+        self.layer3 = nn.Linear(9, n_actions)
 
     def forward(self, x):
         x = F.relu(self.layer1(x))
         x = F.relu(self.layer2(x))
-        x = F.relu(self.layer3(x))
-        return self.layer4(x)
+        return self.layer3(x)
 
 
 class ReplayMemory(object):
@@ -47,17 +45,17 @@ class ReplayMemory(object):
 
 
 class DQNAgent:
-    def __init__(self, device, state, action_num):
+    def __init__(self, device, state, action_num, agent_type):
         self._transition = namedtuple('Transition',
                                       ('state', 'action', 'next_state', 'reward'))
 
         self.batch_size = 128
         self.gamma = 0.99
-        self.eps_start = 0.85
-        self.eps_end = 0.05
-        self.eps_decay = 1000
+        self.eps_start = 0.95
+        self.eps_end = 0.075
+        self.eps_decay = 1
         self.tau = 0.001
-        self.lr = 1e-3
+        self.lr = 0.0005
         self.steps_done = 0
 
         self.n_actions = action_num
@@ -66,12 +64,12 @@ class DQNAgent:
 
         self.policy_net = DQN(self.n_observations, self.n_actions).to(device)
         self.target_net = DQN(self.n_observations, self.n_actions).to(device)
-        self.policy_net.load_state_dict(torch.load('weights/agent_x_policy_minimax.pt'))
+        self.policy_net.load_state_dict(torch.load('weights/agent_%s_policy_4.pt' % agent_type))
         self.target_net.load_state_dict(self.policy_net.state_dict())
-        self.target_net.load_state_dict(torch.load('weights/agent_x_target_minimax.pt'))
+        self.target_net.load_state_dict(torch.load('weights/agent_%s_target_4.pt' % agent_type))
 
         self.optimizer = optim.AdamW(self.policy_net.parameters(), lr=self.lr, amsgrad=True)
-        self.memory = ReplayMemory(500000)
+        self.memory = ReplayMemory(5000000)
         self.device = device
 
     def optimize_model(self):

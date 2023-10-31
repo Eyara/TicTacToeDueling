@@ -4,14 +4,11 @@ from itertools import count
 import matplotlib.pyplot as plt
 import torch
 
-from dqn_agent import DQNAgent, ReplayMemory
+from agents.dqn_agent import DQNAgent
+from agents.random_agent import RandomAgent
 from main import TicTacToeGame
-from minimax_agent import MiniMaxAgent
-from random_agent import RandomAgent
+from agents.minimax_agent import MiniMaxAgent
 from replay_manager import ReplayManager
-
-
-# from replay_manager import ReplayManager
 
 
 def plot_reward(show_result=False):
@@ -73,7 +70,7 @@ def train_agent(agent, current_state, action_sample, device, is_minimax=False):
         observation, reward, terminated, truncated = env.external_step(action.item())
 
         # smells bad but does not care tbh
-        training_states.append([i_episode, observation.tolist()])
+        training_states.append([i_episode, observation.tolist(), action.item(), reward])
 
         reward = torch.tensor([reward], device=device)
         current_done = terminated or truncated
@@ -103,7 +100,7 @@ wins_o = []
 draws = []
 
 if torch.cuda.is_available():
-    num_episodes = 5000
+    num_episodes = 10000
 else:
     num_episodes = 200
 
@@ -113,37 +110,35 @@ env = TicTacToeGame()
 
 state = env.reset(True)
 state = torch.tensor(state, dtype=torch.float32, device=device).unsqueeze(0)
-agent_x = DQNAgent(device, state, env.get_action_num())
-agent_o = DQNAgent(device, state, env.get_action_num())
-# agent_o = MiniMaxAgent(env.get_action_num())
-# agent_o = RandomAgent(env.get_action_num())
+agent_x = DQNAgent(device, state, env.get_action_num(), "x")
+# agent_o = DQNAgent(device, state, env.get_action_num(), "o")
+# agent_x = MiniMaxAgent(env.get_action_num(), 1)
+agent_o_1 = MiniMaxAgent(env.get_action_num(), 2)
+# agent_x = RandomAgent(env.get_action_num())
+agent_o_2 = RandomAgent(env.get_action_num())
 
-for i_episode in range(num_episodes):
+for i_episode in range(num_episodes + 1):
     state = env.reset(True)
     state = torch.tensor(state, dtype=torch.float32, device=device).unsqueeze(0)
+    agent_bots = [agent_o_1, agent_o_2]
+    random.shuffle(agent_bots)
 
-    agents = [agent_x, agent_o]
+    agents = [agent_x, agent_bots[0]]
     # random.shuffle(agents)
     done = False
 
     for t in count():
         if not done:
             done, state, reward_x = train_agent(agents[0], state, env.get_action_sample(), device)
-        else:
-            reward_x = -10
         if not done:
-            done, state, reward_o = train_agent(agents[1], state, env.get_action_sample(), device)
-            if done:
-                reward_x = -10 if reward_o == 10 else 5
-        else:
-            reward_o = -10 if reward_x == 10 else 5
+            done, state, reward_o = train_agent(agents[1], state, env.get_action_sample(), device, True)
 
         if done:
             if reward_x == 10:
                 wins_x_count += 1
             elif reward_o == 10:
                 wins_o_count += 1
-            elif reward_x % 5 == 0 and reward_o % 5 == 0:
+            else:
                 draws_count += 1
 
             wins_x.append(wins_x_count)
@@ -152,14 +147,15 @@ for i_episode in range(num_episodes):
 
             episode_rewards_x.append(reward_x)
             episode_rewards_o.append(reward_o)
-            plot_stats()
+            print(wins_x_count, wins_o_count, draws_count)
+            # plot_stats()
             break
 
-    if i_episode % 1000 == 0:
-        torch.save(agent_x.policy_net.state_dict(), "./weights/agent_x_policy_optimum.pt")
-        torch.save(agent_x.target_net.state_dict(), "./weights/agent_x_target_optimum.pt")
-        torch.save(agent_o.policy_net.state_dict(), "./weights/agent_o_policy_optimum.pt")
-        torch.save(agent_o.target_net.state_dict(), "./weights/agent_o_target_optimum.pt")
+    if i_episode % 100 == 0:
+        torch.save(agent_x.policy_net.state_dict(), "./weights/agent_x_policy_4.pt")
+        torch.save(agent_x.target_net.state_dict(), "./weights/agent_x_target_4.pt")
+    #     torch.save(agent_o.policy_net.state_dict(), "./weights/agent_o_policy.pt")
+    #     torch.save(agent_o.target_net.state_dict(), "./weights/agent_o_target.pt")
 
 replay_manager = ReplayManager()
 replay_manager.save_to_file(training_states)

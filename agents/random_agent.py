@@ -1,5 +1,7 @@
 import random
+
 import torch
+
 
 class RandomAgent:
     def __init__(self, action_num):

@@ -1,26 +1,30 @@
+import hashlib
+import json
 import random
-import tkinter as tk
-import tkinter.font as font
-from tkinter import SUNKEN
 
 import numpy as np
+import torch
 
-
-class SquareButton(tk.Button):
-    def __init__(self, master=None, **kwargs):
-        side = kwargs.pop('side_length', None)
-        tk.Button.__init__(self, master, compound='center', **kwargs)
-        if side:
-            self.config(width=side, height=side)
+from agents.dqn_agent import DQNAgent
+from agents.minimax_agent import MiniMaxAgent
+from board_gui import BoardGUI
 
 
 class TicTacToeGame:
     def __init__(self):
         self._size = 3
         self._win_size = 3
-        self._grid_field = [[0 for x in range(self._size)] for y in range(self._size)]
+        self._grid_field = np.zeros((self._size, self._size))
         self._root = None
         self._current_player = 1
+
+        self._board = BoardGUI(self._size)
+        self._board.on("step", self.step_event_handler)
+        self._board.on("agent_step", self.agent_step_event_handler)
+
+        self._x_agent = DQNAgent("cuda", self.get_state(), self.get_action_num(), "x")
+        # self._x_agent = MiniMaxAgent(self.get_action_num(), 1)
+        self.is_against_agent = False
 
     def _set_grid_field_value(self, row, col, value):
         self._grid_field[row][col] = value
@@ -33,28 +37,6 @@ class TicTacToeGame:
 
     def set_grid_field(self, grid):
         self._grid_field = grid
-
-    def create_env(self):
-        self._root = tk.Tk()
-        self._root.title("Tic tac toe")
-        self._root.geometry("600x600")
-        self.draw_field()
-
-    def set_text(self, button, r, c):
-        current_field = self._grid_field[r][c]
-        button_text = ""
-        if current_field == 1:
-            button_text = "❌"
-        elif current_field == 2:
-            button_text = "⭕"
-
-        button.configure(text=button_text)
-
-    def set_button(self, r, c):
-        btn = SquareButton(side_length=200, font=font.Font(size=75), background="black", fg="white",
-                           activebackground="black", activeforeground="white", relief=SUNKEN)
-        self.set_text(btn, r, c)
-        btn.grid(row=r, column=c)
 
     def is_empty(self, r, c):
         return self._grid_field[r][c] == 0
@@ -74,7 +56,7 @@ class TicTacToeGame:
                 if len(row_arr) == 1 and next(iter(row_arr)) != 0:
                     return True, next(iter(row_arr))
                 if len(col_arr) == 1 and next(iter(col_arr)) != 0:
-                    return True, next(iter(row_arr))
+                    return True, next(iter(col_arr))
 
         # diagonal check
         for i in range(0, iteration_size + 1):
@@ -97,11 +79,11 @@ class TicTacToeGame:
         return False, None
 
     def reset(self, is_external=False):
-        self._grid_field = [[0 for x in range(self._size)] for y in range(self._size)]
+        self._grid_field = np.zeros((self._size, self._size))
         self._current_player = 1
 
         if not is_external:
-            self.draw_field()
+            self._board.draw_field()
         return np.array(self._grid_field).flatten()
 
     def get_action_num(self):
@@ -110,70 +92,77 @@ class TicTacToeGame:
     def get_action_sample(self):
         return random.choice(range(0, self.get_action_num()))
 
+    def get_grid_field(self):
+        return self._grid_field
+
+    def get_state(self):
+        return torch.tensor(np.array(self._grid_field).flatten(), dtype=torch.float32, device="cuda").unsqueeze(0)
+
     def step(self, r, c, is_external=False):
         if not self.is_empty(r, c):
-            return np.array(self._grid_field).flatten(), -20, False, False
+            return np.array(self._grid_field).flatten(), -2, False, False
 
         self._set_grid_field_value(r, c, self._current_player)
 
         if not is_external:
-            self.set_button(r, c)
+            self._board.set_button(r, c, self._grid_field[r][c])
 
         self._toggle_current_player()
 
         has_ended, winner = self.has_ended()
         if has_ended:
             ended_grid_field = self._grid_field
-            self.reset(is_external)
             return np.array(ended_grid_field).flatten(), 10 if winner != 0 else 5, True, False
 
         return np.array(self._grid_field).flatten(), 0, False, False
 
-    def on_click(self, event):
-        btn_info = event.widget.grid_info()
-        self.step(btn_info['row'], btn_info['column'])
-
     def external_step(self, action):
-        return self.step(action // self._size, action % self._size, True)
+        state, reward, done, truncated = self.step(action // self._size, action % self._size, True)
+        if done:
+            self.reset(True)
+        return state, reward, done, truncated
 
     def external_check_action(self, action):
         return self.is_empty(action // self._size, action % self._size)
 
-    def draw_field(self, is_replay_mode=False):
-        for c in range(self._size):
-            self._root.columnconfigure(index=c, weight=1)
-        for r in range(self._size):
-            self._root.rowconfigure(index=r, weight=1)
+    def set_play_agent_mode(self):
+        self.is_against_agent = True
 
-        for r in range(self._size):
-            for c in range(self._size):
-                self.set_button(r, c)
+    def agent_step(self):
+        while True:
+            action = self._x_agent.select_action(self.get_state(), self.get_action_sample())
+            # copy_game = TicTacToeGame()
+            # copy_game.set_grid_field(self._grid_field)
+            # action = self._x_agent.select_action(copy_game, self.get_action_sample())
+            action = action.item()
 
-        if is_replay_mode is False:
-            self._root.bind("<1>", self.on_click)
-            self._root.mainloop()
+            if self.external_check_action(action):
+                state, reward, done, truncated = self.step(action // self._size, action % self._size)
+                print(reward)
+                if done:
+                    self.reset()
+                break
+
+    def step_event_handler(self, data):
+        state, reward, done, truncated = self.step(data[0], data[1])
+        if done:
+            self.reset()
+
+    def agent_step_event_handler(self, data):
+        if self.is_against_agent:
+            self.agent_step()
+
+    def create_env(self):
+        self._board.create_env()
 
     def create_replay_env(self):
-        self._root = tk.Tk()
-        self._root.title("Tic tac toe's replay")
-        self._root.geometry("600x600")
-
-    def get_root(self):
-        return self._root
-
-    def get_hash(self) -> int:
-        res = 0
-        for i in range(self._size):
-            res *= 3
-            for j in range(self._size):
-                res *= j + 1
-                res += self._grid_field[i][j]
-        return res
+        self._board.create_replay_env()
 
     def run_mainloop(self):
-        self._root.mainloop()
+        self._board.run_mainloop()
 
 
 if __name__ == '__main__':
     tg = TicTacToeGame()
+    tg.set_play_agent_mode()
     tg.create_env()
